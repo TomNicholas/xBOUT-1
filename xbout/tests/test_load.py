@@ -13,7 +13,7 @@ from natsort import natsorted
 
 from xbout.load import _check_filetype, _expand_wildcards, _expand_filepaths,\
     _arrange_for_concatenation, _trim, _strip_metadata, \
-    _auto_open_mfboutdataset
+    _auto_open_mfboutdataset, _infer_contains_guards
 
 
 def test_check_extensions(tmpdir):
@@ -279,8 +279,8 @@ def create_bout_ds(syn_data_type='random', lengths=(2,4,7,6), num=0, nxpe=1, nyp
     return ds
 
 
-METADATA_VARS = ['NXPE', 'NYPE', 'MXG', 'MYG', 'nx', 'MXSUB', 'MYSUB',
-                        'MZ']
+METADATA_VARS = ['NXPE', 'NYPE', 'MXG', 'MYG', 'nx', 'MXSUB', 'MYSUB', 'MZ']
+
 
 class TestStripMetadata():
     def test_strip_metadata(self):
@@ -344,12 +344,103 @@ class TestCombineNoTrim:
 class TestTrim:
     def test_no_trim(self):
         ds = create_test_data(0)
-        actual = _trim(ds)
+        # Manually add filename - encoding normally added by xr.open_dataset
+        ds.encoding['source'] = 'folder0/BOUT.dmp.0.nc'
+        actual = _trim(ds, ghosts={}, guards={}, keep_guards={})
         xrt.assert_equal(actual, ds)
 
     def test_trim_ghosts(self):
         ds = create_test_data(0)
+        # Manually add filename - encoding normally added by xr.open_dataset
+        ds.encoding['source'] = 'folder0/BOUT.dmp.0.nc'
         actual = _trim(ds, ghosts={'time': 2})
         selection = {'time': slice(2, -2)}
         expected = ds.isel(**selection)
+        xrt.assert_equal(expected, actual)
+
+    @pytest.mark.parametrize("filenum, nxpe, nype, lower_guards, upper_guards",
+                             # no parallelization
+                             [(0,      1,    1,    {'x': True,  'y': True},
+                                                   {'x': True,  'y': True}),
+
+                              # 1d parallelization along x:
+                              # Left
+                              (0,      3,    1,    {'x': True,  'y': True},
+                                                   {'x': False, 'y': True}),
+                              # Middle
+                              (1,      3,    1,    {'x': False, 'y': True},
+                                                   {'x': False, 'y': True}),
+                              # Right
+                              (2,      3,    1,    {'x': False, 'y': True},
+                                                   {'x': True,  'y': True}),
+
+                              # 1d parallelization along y:
+                              # Bottom
+                              (0,      1,    3,    {'x': True,  'y': True},
+                                                   {'x': True,  'y': False}),
+                              # Middle
+                              (1,      1,    3,    {'x': True,  'y': False},
+                                                   {'x': True,  'y': False}),
+                              # Top
+                              (2,      1,    3,    {'x': True,  'y': False},
+                                                   {'x': True,  'y': True}),
+
+                              # 2d parallelization:
+                              # Bottom left corner
+                              (0,      3,    4,    {'x': True,  'y': True},
+                                                   {'x': False, 'y': False}),
+                              # Bottom right corner
+                              (2,      3,    4,    {'x': False, 'y': True},
+                                                   {'x': True,  'y': False}),
+                              # Top left corner
+                              (9,      3,    4,    {'x': True,  'y': False},
+                                                   {'x': False, 'y': True}),
+                              # Top right corner
+                              (11,     3,    4,    {'x': False, 'y': False},
+                                                   {'x': True,  'y': True}),
+                              # Centre
+                              (7,      3,    4,    {'x': False, 'y': False},
+                                                   {'x': False, 'y': False}),
+                              # Left side
+                              (3,      3,    4,    {'x': True,  'y': False},
+                                                   {'x': False, 'y': False}),
+                              # Right side
+                              (5,      3,    4,    {'x': False, 'y': False},
+                                                   {'x': True,  'y': False}),
+                              # Bottom side
+                              (1,      3,    4,    {'x': False, 'y': True},
+                                                   {'x': False, 'y': False}),
+                              # Top side
+                              (10,     3,    4,    {'x': False, 'y': False},
+                                                   {'x': False, 'y': True})
+                              ])
+    def test_infer_guards_2d_parallelization(self, filenum, nxpe, nype,
+                                             lower_guards, upper_guards):
+        """
+        Numbering scheme for nxpe=3, nype=4
+
+        y  9 10 11
+        ^  6 7  8
+        |  3 4  5
+        |  0 1  2
+         -----> x
+        """
+
+        filename = "folder0/BOUT.dmp." + str(filenum) + ".nc"
+        actual_lower_guards, actual_upper_guards = _infer_contains_guards(
+            filename, nxpe, nype)
+
+        assert actual_lower_guards == lower_guards
+        assert actual_upper_guards == upper_guards
+
+    def test_keep_xguards(self):
+        ds = create_test_data(0)
+        ds = ds.rename({'dim2': 'x'})
+
+        # Manually add filename - encoding normally added by xr.open_dataset
+        ds.encoding['source'] = 'folder0/BOUT.dmp.0.nc'
+
+        actual = _trim(ds, ghosts={'x': 2}, guards={'x': 2},
+                       keep_guards={'x': True}, nxpe=1, nype=1)
+        expected = ds  # Should be unchanged
         xrt.assert_equal(expected, actual)

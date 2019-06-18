@@ -164,3 +164,4 @@ def _find_time_dependent_vars(data):
     evolving_vars = set(var for var in data.data_vars if 't' in data[var].dims)
     time_independent_vars = set(data.data_vars) - set(evolving_vars)
     return list(evolving_vars), list(time_independent_vars)
+
