@@ -7,7 +7,7 @@ from . import geometries
 from .utils import _set_attrs_on_all_vars, _check_filetype, _separate_metadata
 
 
-def open_grid(gridfilepath='./grid.nc', geometry=None, ds=None, quiet=False):
+def open_grid(gridfilepath='./grid.nc', geometry=None, ds=None, quiet=False, chunks=None):
     """
     Opens a BOUT++ grid file.
 
@@ -39,7 +39,7 @@ def open_grid(gridfilepath='./grid.nc', geometry=None, ds=None, quiet=False):
     """
 
     gridfilepath = Path(gridfilepath)
-    grid = xr.open_dataset(gridfilepath, engine=_check_filetype(gridfilepath))
+    grid = xr.open_dataset(gridfilepath, engine=_check_filetype(gridfilepath), chunks=chunks)
 
     # TODO find out what 'yup_xsplit' etc are in the doublenull storm file John gave me
     # For now drop any variables with extra dimensions
@@ -57,7 +57,13 @@ def open_grid(gridfilepath='./grid.nc', geometry=None, ds=None, quiet=False):
     if ds is None:
         ds = grid
     else:
-        ds = xr.merge([ds, grid])
+        if chunks:
+            # Only chunk along dimensions which actually exist in grid
+            gridchunks = {k: chunks[k] for k in ds.dims.keys()}
+            grid = grid.chunk(gridchunks)
+        
+        ds = xr.merge([ds, grid], compat='equals')
+
     ds = _set_attrs_on_all_vars(ds, 'grid', grid_metadata)
 
     if geometry is None:

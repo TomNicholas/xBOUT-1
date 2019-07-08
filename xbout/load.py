@@ -103,11 +103,10 @@ def _auto_open_mfboutdataset(datapath, chunks={}, info=True,
                           keep_guards={'x': keep_xguards, 'y': keep_yguards},
                           nxpe=nxpe, nype=nype)
 
-    # TODO warning message to make sure user knows if it's parallelized
     ds = xr.open_mfdataset(paths_grid, concat_dim=concat_dims,
-                           combine='manual', data_vars='minimal',
+                           combine='nested', data_vars='minimal',
                            preprocess=_preprocess, engine=filetype,
-                           chunks=chunks, parallel=False)
+                           chunks=chunks)
 
     ds, metadata = _separate_metadata(ds)
 
