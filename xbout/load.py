@@ -34,6 +34,7 @@ except ValueError:
 def open_boutdataset(datapath='./BOUT.dmp.*.nc', chunks={},
                      inputfilepath=None,
                      gridfilepath=None, geometry=None,
+                     keep_xguards=False, keep_yguards=False,
                      run_name=None, info=True):
     """
     Load a dataset from a set of BOUT output files, including the input options file.
@@ -57,7 +58,9 @@ def open_boutdataset(datapath='./BOUT.dmp.*.nc', chunks={},
     # TODO handle possibility that we are loading a previously saved (and trimmed) dataset
 
     # Gather pointers to all numerical data from BOUT++ output files
-    ds, metadata = _auto_open_mfboutdataset(datapath=datapath, chunks=chunks)
+    ds, metadata = _auto_open_mfboutdataset(datapath=datapath, chunks=chunks,
+                                            keep_xguards=keep_xguards,
+                                            keep_yguards=keep_yguards)
     ds = _set_attrs_on_all_vars(ds, 'metadata', metadata)
 
     if inputfilepath:
@@ -71,7 +74,7 @@ def open_boutdataset(datapath='./BOUT.dmp.*.nc', chunks={},
     ds = _set_attrs_on_all_vars(ds, 'options', options)
 
     if gridfilepath:
-        ds = open_grid(gridfilepath=gridfilepath, geometry=geometry, ds=ds)
+        ds = open_grid(gridfilepath=gridfilepath, geometry=geometry, ds=ds, chunks=chunks)
 
     # TODO read and store git commit hashes from output files
 
