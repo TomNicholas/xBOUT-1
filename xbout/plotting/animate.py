@@ -6,7 +6,7 @@ import animatplot as amp
 
 def animate_imshow(data, animate_over='t', x='x', y='y', animate=True,
                    vmin='min', vmax='max', fps=10, save_as=None,
-                   ax=None, **kwargs):
+                   sep_pos=None, ax=None, **kwargs):
     """
     Plots a color plot which is animated with time over the specified
     coordinate.
