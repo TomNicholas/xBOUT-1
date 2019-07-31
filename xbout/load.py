@@ -14,7 +14,8 @@ _BOUT_TIMING_VARIABLES = ['wall_time', 'wtime', 'wtime_rhs', 'wtime_invert',
 
 
 def _auto_open_mfboutdataset(datapath, chunks={}, info=True,
-                             keep_xboundaries=False, keep_yboundaries=False):
+                             keep_xboundaries=False, keep_yboundaries=False,
+                             parallel=False):
     filepaths, filetype = _expand_filepaths(datapath)
 
     # Open just one file to read processor splitting
@@ -26,11 +27,12 @@ def _auto_open_mfboutdataset(datapath, chunks={}, info=True,
                           keep_boundaries={'x': keep_xboundaries, 'y': keep_yboundaries},
                           nxpe=nxpe, nype=nype)
 
-    # TODO warning message to make sure user knows if it's parallelized
+    if parallel:
+        print("Opening files in parallel...")
     ds = xarray.open_mfdataset(paths_grid, concat_dim=concat_dims,
                                combine='nested', data_vars='minimal',
                                preprocess=_preprocess, engine=filetype,
-                               chunks=chunks)
+                               chunks=chunks, parallel=parallel)
 
     ds, metadata = _strip_metadata(ds)
 

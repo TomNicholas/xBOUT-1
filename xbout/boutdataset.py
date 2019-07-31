@@ -32,7 +32,7 @@ except ValueError:
 def open_boutdataset(datapath='./BOUT.dmp.*.nc',
                      inputfilepath=None, gridfilepath=None, chunks={},
                      keep_xboundaries=True, keep_yboundaries=False,
-                     run_name=None, info=True):
+                     run_name=None, info=True, parallel=False):
     """
     Load a dataset from a set of BOUT output files, including the input options file.
 
@@ -65,7 +65,8 @@ def open_boutdataset(datapath='./BOUT.dmp.*.nc',
     # Gather pointers to all numerical data from BOUT++ output files
     ds, metadata = _auto_open_mfboutdataset(datapath=datapath, chunks=chunks,
                                             keep_xboundaries=keep_xboundaries,
-                                            keep_yboundaries=keep_yboundaries)
+                                            keep_yboundaries=keep_yboundaries,
+                                            parallel=parallel)
 
     ds = _set_attrs_on_all_vars(ds, 'metadata', metadata)
 
