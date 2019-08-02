@@ -57,9 +57,12 @@ def open_grid(gridfilepath='./grid.nc', geometry=None, ds=None, quiet=False, chu
     if ds is None:
         ds = grid
     else:
-        if chunks:
+        # Ensure chunks are consistent        
+        if ds.chunks and not chunks:
+            chunks = ds.chunks
+        if chunks:         
             # Only chunk along dimensions which actually exist in grid
-            gridchunks = {k: chunks[k] for k in ds.dims.keys()}
+            gridchunks = {k: chunks[k] for k in grid.dims.keys()}
             grid = grid.chunk(gridchunks)
         
         ds = xr.merge([ds, grid], compat='equals')
